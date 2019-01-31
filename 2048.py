@@ -44,11 +44,10 @@ class Game:
 					#Hint: Check the use of deepcopy
 					ai = Gametree(copy.deepcopy(self.tileMatrix), 3, self.total_points)
 					direction = ai.compute_decision() 
-					#self.move(direction)
-					auto = False
+					self.move(direction)
 				else:
 					auto = False
-					self.printGameOver()
+					#self.printGameOver()
 			for event in pygame.event.get():
 				if event.type == QUIT:
 					pygame.quit()
@@ -82,7 +81,7 @@ class Game:
 		if self.canMove():
 			self.moveTiles()
 			self.mergeTiles()
-			#self.placeRandomTile()
+			self.placeRandomTile()
 		for j in range(0, (4 - direction) % 4):
 			self.rotateMatrixClockwise()
 		self.printMatrix()
