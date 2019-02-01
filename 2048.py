@@ -42,12 +42,14 @@ class Game:
 			if auto:
 				if self.checkIfCanGo():
 					#Hint: Check the use of deepcopy
-					ai = Gametree(copy.deepcopy(self.tileMatrix), 3, self.total_points)
+					ai = Gametree(copy.deepcopy(self.tileMatrix), 5, self.total_points)
 					direction = ai.compute_decision() 
 					self.move(direction)
-				#	auto = False
 				else:
 					auto = False
+					print("SCORE:", self.total_points)
+					print([[max(per_tile)] for per_tile in self.tileMatrix])
+					self.reset()
 					#self.printGameOver()
 			for event in pygame.event.get():
 				if event.type == QUIT:
