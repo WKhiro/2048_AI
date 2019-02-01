@@ -13,7 +13,7 @@ class Gametree:
         # Hint: Think about the difference between your move and the computer's move.
         def __init__(self, root_state, depth_of_tree, current_score):
                 #NOT USING DEPTH RIGHT NOW
-                self.tree = Node(root_state, current_score, 'max', -1) #tree
+                self.tree = Node(root_state, current_score, 'max') #tree
                 self.sim = Simulator() #sim
                 self.sim.tileMatrix = root_state
         def growTree(self):
@@ -30,7 +30,7 @@ class Gametree:
                                 for y in range(self.sim.board_size):
                                         if self.sim.tileMatrix[x][y] == 0:
                                                 self.sim.tileMatrix[x][y] = 2
-                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'max', -1)
+                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'max')
                                                 i.add(copy.deepcopy(temp))
                                                 self.sim.tileMatrix[x][y] = 0
                 for i in self.tree.children:
@@ -43,10 +43,66 @@ class Gametree:
                                                 tempx = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', x)
                                                 k.add(copy.deepcopy(tempx))
                                         self.sim.undo()
+##                for i in self.tree.children:
+##                        for k in i.children:
+##                                for z in k.children:
+##                                        self.sim.tileMatrix = z.state
+##                                        for x in range(self.sim.board_size):
+##                                                for y in range(self.sim.board_size):
+##                                                        if self.sim.tileMatrix[x][y] == 0:
+##                                                                self.sim.tileMatrix[x][y] = 2
+##                                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'max')
+##                                                                z.add(copy.deepcopy(temp))
+##                                                                self.sim.tileMatrix[x][y] = 0
+##                for i in self.tree.children:
+##                        for k in i.children:
+##                                for z in k.children:
+##                                        for v in z.children:
+##                                                self.sim.tileMatrix = v.state
+##                                                loly = copy.deepcopy(self.sim.tileMatrix)
+##                                                for x in range(len(MOVES)):
+##                                                        self.sim.move(x)
+##                                                        if loly != self.sim.tileMatrix:
+##                                                                tempx = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', x)
+##                                                                v.add(copy.deepcopy(tempx))
+##                                                        self.sim.undo()
         # expectimax for computing best move
+        def increasing(self, L):
+                return all(x >= y for x, y in zip(L, L[1:]))
+        def decreasing(self, L):
+                return all(x <= y for x, y in zip(L, L[1:]))
+        def monotonic(self, L):
+                rV = 6
+                for test in range(len(L)):
+                        x = [y[test] for y in L]
+                        if not (self.increasing(x) or self.decreasing(x)):
+                                rV = 0
+                                break
+                for i in L: #checking columns
+                        if not (self.increasing(i) or self.decreasing(i)):
+                                rV = 0
+                                break
+                if rV == 0:
+                        return 1
+                else:
+                        return rV
         def expectimax(self, node):#state):
                 if len(node.children) == 0:
-                        return node.score
+                        counter = 1
+                        maxtr = 0
+                        xt = -1
+                        yt = -1
+                        bonus = 1
+                        for x in range(self.sim.board_size):
+                                for y in range(self.sim.board_size):
+                                        if node.state[x][y] == 0:
+                                                counter = counter + 1
+                        bonus = self.monotonic(node.state)
+                        if bonus == 1:
+                                pass
+                        else:
+                                bonus = bonus*100000
+                        return (node.score + (node.score*bonus))
                 elif node.type == 'max':
                         value = -1
                         for n in node.children:
@@ -66,41 +122,22 @@ class Gametree:
         # function to return best decision to game
         def compute_decision(self):
                 self.growTree()
-                self.lolx = []
+                choices = []
                 for n in range(len(self.tree.children)):
-                        xd = self.expectimax(self.tree.children[n])
-                        #print(xd)
-                        self.lolx.append(copy.deepcopy(xd))
-                tester = self.lolx.index(max(self.lolx))
-                nani = self.tree.children[tester].movex
-                #nani = self.expectimax(self.tree)
-                #print("LIST", self.lolx)
-                #print("HI", nani)
-##                for i in self.tree.children:
-##                        print("HI", i.state)
-##                        for k in i.children:
-##                                print("CHANCES", k.state)
-##                                for x in k.children:
-##                                        print("MOVES AGAIN", x.state)
-                #print("MAX", self.tree.children[0].state)
-                #for x in self.tree.children[0].children:
-                        #print(x.state)
-                        #print(x.score)
-                #print("MAX", self.tree.children[1].state)
-                #for x in self.tree.children[1].children:
-                        #print(x.state)
-                        #print(x.score)
+                        result = self.expectimax(self.tree.children[n])
+                        choices.append(copy.deepcopy(result))
+                maximum = choices.index(max(choices))
+                optimalMove = self.tree.children[maximum].move
                 #change this return value when you have implemented the function
-                #pass
-                return nani
-
+                return optimalMove
+        
 class Node:
-        def __init__(self, gameState, totalPoints, maxOrChance, move):
+        def __init__(self, gameState, totalPoints, maxOrChance, move = None):
                 self.state = gameState
                 self.score = totalPoints
                 self.type = maxOrChance
+                self.move = move
                 self.children = []
-                self.movex = move
         def add(self, child):
                 self.children.append(child)
 
@@ -111,6 +148,7 @@ class Simulator:
                 self.board_size = 4
                 self.tileMatrix = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
                 self.undoMat = []
+        # Removed placing random tiles in order to simulate moves just before said placements
         def move(self, direction):
                 self.addToUndo()
                 for i in range(0, direction):
@@ -118,17 +156,8 @@ class Simulator:
                 if self.canMove():
                         self.moveTiles()
                         self.mergeTiles()
-                        #self.placeRandomTile()
                 for j in range(0, (4 - direction) % 4):
                         self.rotateMatrixClockwise()
-                #self.printMatrix()
-        def placeRandomTile(self):
-                while True:
-                        i = random.randint(0,self.board_size-1)
-                        j = random.randint(0,self.board_size-1)
-                        if self.tileMatrix[i][j] == 0:
-                                break
-                self.tileMatrix[i][j] = 2
         def moveTiles(self):
                 tm = self.tileMatrix
                 for i in range(0, self.board_size):

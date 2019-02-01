@@ -45,6 +45,7 @@ class Game:
 					ai = Gametree(copy.deepcopy(self.tileMatrix), 3, self.total_points)
 					direction = ai.compute_decision() 
 					self.move(direction)
+				#	auto = False
 				else:
 					auto = False
 					#self.printGameOver()
