@@ -1,165 +1,157 @@
 # Wesley Kok
 # CSE 150 PA2
+#
+# NOTE: 2048.py currently requests a depth '5' tree.
 
 from __future__ import absolute_import, division, print_function
 import copy
 import random
 MOVES = {0: 'up', 1: 'left', 2: 'down', 3: 'right'}
-W = [[6, 5, 4, 3], [5, 4, 3, 2], [4, 3, 2, 1], [3, 2, 1, 0]]
-D = 4
+WEIGHTS = [[6, 5, 4, 3], [5, 4, 3, 2], [4, 3, 2, 1], [3, 2, 1, 0]] # Weighted tile matrix
+
+# Constructs game tree and computes optimal moves
 class Gametree:
         """main class for the AI"""
         def __init__(self, root_state, depth_of_tree, current_score):
-                #NOT USING DEPTH RIGHT NOW
-                self.tree = Node(root_state, current_score, 'max') #tree
-                self.sim = Simulator() #sim
-                self.sim.tileMatrix = root_state
-                self.depth = depth_of_tree
-        def growTree(self, depth):
-#        def growTree(self, node, depth):
-##                if depth == 0:
-##                        return
-##                if depth == 3:
-##                        self.sim.tileMatrix = node.state
-##                        matrixCopy = copy.deepcopy(node.state)
-##                        for x in range(len(MOVES)):
-##                                        self.sim.move(x)
-##                                        if matrixCopy != self.sim.tileMatrix:
-##                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', x)
-##                                                node.add(copy.deepcopy(temp))
-##                                        self.sim.undo()
-##                        depth = depth - 1
-##                        self.growTree(node, depth)
-##                elif depth % 2 == 1:
-##                        depth = depth - 1
-##                        for i in node.children:
-##                                self.sim.tileMatrix = i.state
-##                                matrixCopy = copy.deepcopy(self.sim.tileMatrix)
-##                                for x in range(len(MOVES)):
-##                                        self.sim.move(x)
-##                                        if matrixCopy != self.sim.tileMatrix:
-##                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', x)
-##                                                i.add(copy.deepcopy(temp))
-##                                                self.growTree(i, depth)
-##                                        self.sim.undo()
-##                elif depth % 2 == 0:
-##                        depth = depth - 1
-##                        for i in node.children:
-##                                self.sim.tileMatrix = i.state
-##                                for x in range(self.sim.board_size):
-##                                        for y in range(self.sim.board_size):
-##                                                if self.sim.tileMatrix[x][y] == 0:
-##                                                        self.sim.tileMatrix[x][y] = 2
-##                                                        temp = Node(self.sim.tileMatrix, self.sim.total_points, 'max')
-##                                                        i.add(copy.deepcopy(temp))
-##                                                        self.sim.tileMatrix[x][y] = 0
-##                                                        self.growTree(i, depth)
-                if depth == 0:
+                self.tree = Node(root_state, current_score, 'max')      # Root node (MAX player)
+                self.depth = depth_of_tree                              # Depth of desired tree
+                self.sim = Simulator()                                  # Game simulator 
+        # Grows out a tree of simulated moves from the root game state
+        # PERSONAL NOTE: Uses loops rather than recursion; recursion took up too
+        #                stack space, resulting in extremely slow computations
+        def growTree(self, depth = None):
+                # Expand the root node
+                if depth == self.depth:
+                        # Get the current node state
+                        self.sim.tileMatrix = self.tree.state
                         for i in range(len(MOVES)):
+                                # Make a copy of the board before simulating moves
                                 matrixCopy = copy.deepcopy(self.sim.tileMatrix)
                                 self.sim.move(i)
+                                # Add the node as a child if the board changes whatsoever
                                 if matrixCopy != self.sim.tileMatrix:
-                                        temp = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', i)
+                                        # Records the move as well (i)
+                                        temp = Node(self.sim.tileMatrix, 'chance', i)
                                         self.tree.add(copy.deepcopy(temp))
                                 self.sim.undo()
+                # Expand the CHANCE player nodes
                 for i in self.tree.children:
+                        # Make a copy of the board before simulating random tile placements
                         self.sim.tileMatrix = i.state
                         for x in range(self.sim.board_size):
                                 for y in range(self.sim.board_size):
+                                        # Add all possible random tile placements as child nodes
                                         if self.sim.tileMatrix[x][y] == 0:
                                                 self.sim.tileMatrix[x][y] = 2
-                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'max')
+                                                temp = Node(self.sim.tileMatrix, 'max')
                                                 i.add(copy.deepcopy(temp))
                                                 self.sim.tileMatrix[x][y] = 0
+                # Expand the MAX player nodes for CHANCE player nodes
                 for i in self.tree.children:
                         for k in i.children:
+                                # Make a copy of the board before simulating moves
                                 self.sim.tileMatrix = k.state
                                 matrixCopy = copy.deepcopy(self.sim.tileMatrix)
                                 for x in range(len(MOVES)):
                                         self.sim.move(x)
+                                        # Add the node as a child if the board changes whatsoever
                                         if matrixCopy != self.sim.tileMatrix:
-                                                temp = Node(self.sim.tileMatrix, self.sim.total_points, 'chance', x)
+                                                # Records the move as well (x)
+                                                temp = Node(self.sim.tileMatrix, 'chance', x)
                                                 k.add(copy.deepcopy(temp))
                                         self.sim.undo()
+        # Returns a payoff penalty based on board smoothness
+        def smoothness(self, node, x, y):
+                smoothnessPenalty = 0
+                # Check for the smoothness between the current node and all of its neighboring nodes
+                if x < (self.sim.board_size - 1):
+                        smoothnessPenalty += abs(node.state[x][y] - node.state[x+1][y])
+                if x > 0:
+                        smoothnessPenalty += abs(node.state[x][y] - node.state[x-1][y])
+                if y < (self.sim.board_size - 1):
+                        smoothnessPenalty += abs(node.state[x][y] - node.state[x][y+1])
+                if y > 0:
+                        smoothnessPenalty += abs(node.state[x][y] - node.state[x][y-1])
+                return smoothnessPenalty
+        # Calculates the payoff of moves from bottom-up in the game tree
         def expectimax(self, node):
+                # Check for terminal (leaf) nodes
                 if len(node.children) == 0:
-                        score = 0
-                        p = 0
-                        c = 0
-                        for i in range(4):
-                                for j in range(4):
-                                        if node.state[i][j] != 0:
-                                                c += 1
-                                        score += node.state[i][j]*W[i][j]
-                                        if i < 3:
-                                                p += abs(node.state[i][j] - node.state[i+1][j])
-                                        if i > 0:
-                                                p += abs(node.state[i][j] - node.state[i-1][j])
-                                        if j < 3:
-                                                p += abs(node.state[i][j] - node.state[i][j+1])
-                                        if j > 0:
-                                                p += abs(node.state[i][j] - node.state[i][j-1])
-                        if c > 10:
-                                c = 2
+                        # Calculate payoff
+                        weightedScore, occupiedTiles, smoothnessPenalty = 0, 0, 0
+                        for x in range(self.sim.board_size):
+                                for y in range(self.sim.board_size):
+                                        # Count the number of non-free tiles
+                                        if node.state[x][y] != 0:
+                                                occupiedTiles += 1
+                                        # Increase payoff based on having bigger valued tiles
+                                        # near the top left corner
+                                        weightedScore += node.state[x][y]*WEIGHTS[x][y]
+                                        # Calculate smoothness of the board
+                                        smoothnessPenalty += self.smoothness(node, x, y)
+                        # Calculate the payoff based on the number of free tiles, weights,
+                        # and smoothness. Smoothness is deducted as a penalty value, while
+                        # an overabundance of occupied tiles splits payoff in half
+                        if occupiedTiles > 10:
+                                return (weightedScore - smoothnessPenalty)/2
                         else:
-                                c = 1
-                        #return node.score
-                        return (score-p)/c
+                                return (weightedScore - smoothnessPenalty)
+                # Calculate payoff for MAX player nodes
                 elif node.type == 'max':
                         value = -1
+                        # Get the highest payoff from the CHANCE child nodes
                         for n in node.children:
                                 value = max(value, self.expectimax(n))
                         return value
+                # Calculate payoff for CHANCE player nodes
                 elif node.type == 'chance':
-                        value = 0
-                        p = 0
+                        value, smoothnessPenalty = 0, 0
                         for n in node.children:
+                                # Check if there's any children nodes
                                 if (len(n.children) == 0):
                                         return value
                                 else:
-                                        for i in range(4):
-                                                for j in range(4):
-                                                        if i < 3:
-                                                                p += abs(node.state[i][j] - node.state[i+1][j])
-                                                        if i > 0:
-                                                                p += abs(node.state[i][j] - node.state[i-1][j])
-                                                        if j < 3:
-                                                                p += abs(node.state[i][j] - node.state[i][j+1])
-                                                        if j > 0:
-                                                                p += abs(node.state[i][j] - node.state[i][j-1])
-                                        p = p*5
-                                        value = value + self.expectimax(n)*(1/p)#(1/(len(n.children)))
+                                        # Calculate the selection chance based on board smoothness
+                                        for x in range(self.sim.board_size):
+                                                for y in range(self.sim.board_size):
+                                                        smoothnessPenalty += self.smoothness(n, x, y)
+                                        # Added weight to the smoothness penalty
+                                        smoothnessPenalty *= 5
+                                        # Safety prevention of division by '0'
+                                        if smoothnessPenalty == 0:
+                                                smoothnessPenalty = 1
+                                        # Return the payoff of the node
+                                        value = value + self.expectimax(n)*(1/smoothnessPenalty)
                         return value
                 else:
-                        print("ERROR")
-        # function to return best decision to game
+                        return
+        # Function to return best decision to game
         def compute_decision(self):
-                self.growTree(0)
-                self.growTree(4)
-##                self.growTree(self.tree, 3)
-##                self.growTree(self.tree, 2)
-                choices = []
+                possibleMoves = []
+                # Grow to a depth '3' tree
+                self.growTree(self.depth)
+                # Grow to a depth '5' tree if specified
+                if (self.depth == 5):
+                        self.growTree()
+                # Get the payoff of all rational moves from the root state
                 for n in range(len(self.tree.children)):
-                        result = self.expectimax(self.tree.children[n])
-                        choices.append(copy.deepcopy(result))
-                maximum = choices.index(max(choices))
-                optimalMove = self.tree.children[maximum].move
-                #change this return value when you have implemented the function
+                        payoff = self.expectimax(self.tree.children[n])
+                        possibleMoves.append(copy.deepcopy(payoff))
+                # Get the maximum payoff, and return the move associated with said payoff
+                maximumPayoff = possibleMoves.index(max(possibleMoves))
+                optimalMove = self.tree.children[maximumPayoff].move
                 return optimalMove
 
 # Generates nodes for tree      
 class Node:
-        def __init__(self, gameState, totalPoints, maxOrChance, move = None):
-                self.state = gameState
-                self.score = totalPoints
+        def __init__(self, gameState, maxOrChance, move = None):
+                self.state = gameState          # Node's game state (tile matrix)
                 self.type = maxOrChance
                 self.move = move
                 self.children = []
         # Adds children to node
         def add(self, child):
                 self.children.append(child)
-        def check(self):
-                return self.children == []
                 
 # Simulator; methods utilized to simulate moves for 2048
 class Simulator:

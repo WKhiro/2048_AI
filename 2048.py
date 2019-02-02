@@ -33,7 +33,7 @@ class Game:
 		self.tileMatrix = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]]
 		self.undoMat = []
 	def loop(self, fromLoaded = False):
-		auto = True # CHANGE TO TRUE/FALSE FOR AI USE
+		auto = True # CHANGE TO TRUE TO USE AI, FALSE TO TURN OFF
 		if not fromLoaded:
 			self.placeRandomTile()
 			self.placeRandomTile()
@@ -41,16 +41,19 @@ class Game:
 		while True:
 			if auto:
 				if self.checkIfCanGo():
-					#Hint: Check the use of deepcopy
+					# DEPTH HAS BEEN CHANGED FROM '3' to '5'
+					# Both depths are capable of reaching 2048; change if desired
 					ai = Gametree(copy.deepcopy(self.tileMatrix), 5, self.total_points)
 					direction = ai.compute_decision() 
 					self.move(direction)
 				else:
 					auto = False
-					print("SCORE:", self.total_points)
-					print([[max(per_tile)] for per_tile in self.tileMatrix])
-					self.reset()
-					#self.printGameOver()
+					self.printGameOver()
+					# Comment out printGameOver() and add these lines back in
+					# to repeatedly run program and print scores:
+					#       print("SCORE:", self.total_points)
+					#       print([[max(per_tile)] for per_tile in self.tileMatrix])
+					#       self.reset()
 			for event in pygame.event.get():
 				if event.type == QUIT:
 					pygame.quit()
