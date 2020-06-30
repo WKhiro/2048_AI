@@ -1,6 +1,4 @@
 # Wesley Kok
-# CSE 150 PA2
-#
 # NOTE: 2048.py currently requests a depth '5' tree.
 
 from __future__ import absolute_import, division, print_function
@@ -18,7 +16,7 @@ class Gametree:
                 self.sim = Simulator()                                  # Game simulator 
         # Grows out a tree of simulated moves from the root game state
         # PERSONAL NOTE: Uses loops rather than recursion; recursion took up too
-        #                stack space, resulting in extremely slow computations
+        #                stack space, resulting in extremely slow computation
         def growTree(self, depth = None):
                 # Expand the root node
                 if depth == self.depth:
